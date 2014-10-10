@@ -48,7 +48,7 @@ def make_histogram(y, row_title, col_title, title, output_folder, file_name="seq
     x = [i for i in range(1, len(y) + 1)]
     plt.bar(x, y, width=1, align="center", color="g")
     plt.xticks(range(1, len(y) + 1), x)
-    plt.axis([0.5, len(x) + 0.5, 0, max(y) + 10])
+    plt.axis([0.5, len(x) + 0.5, 0, max(y)*1.05])
     plt.grid(True)
     
     save_path = os.path.join(output_folder, file_name)
@@ -69,10 +69,25 @@ def create_output(lengths, qualities, input_file, output_folder):
                  )
     
 
-    size = size_human_readable(get_size("shortExample.fastq"))
+    size = size_human_readable(get_size(input_file))
     average_length = average(lengths)
-    # average_read_quality 
+    average_read_quality=round(average([average(quality) for quality in qualities])) 
     read_count = len(lengths)
+    
+    
+    with open(output_folder + "/profile_statistics.txt", "w") as txt:
+        text_lines = ["File: "+input_file,
+                      "\n", 
+                      "Size: "+size,
+                      "\n", 
+                      "Average length: " + str(average_length), 
+                      "\n",
+                      "Average read quality: "+str(average_read_quality),
+                      "\n",
+                      "Number of reads: " + str(read_count)
+                      ]
+        txt.writelines(text_lines)
+        
 
 def main(argv):
 
@@ -94,7 +109,7 @@ def main(argv):
     for record in SeqIO.parse(handle, "fastq"):
         lengths.append(len(record.seq))
         qualities.append(record.letter_annotations["phred_quality"])
-    """
+    handle.close()
     
     qualities.sort(key = lambda row: len(row))
     
@@ -105,10 +120,11 @@ def main(argv):
         for quality in reversed(qualities):
             if i < len(quality):
                 qualities_per_position[i].append(quality[i])
-        
-    """
+            else:
+                break;
     
-    create_output(lengths, qualities, args.input_file, args.output_folder)
+    
+    create_output(lengths, qualities_per_position, args.input_file, args.output_folder)
         
 if(__name__ == "__main__"):
     main(sys.argv[1:])
