@@ -8,11 +8,12 @@ Created on Oct 8, 2014
 import sys
 import os
 import argparse
-from Bio import SeqIO
-from collections import Counter
 import math
-import matplotlib.pyplot as plt
 import time
+from collections import Counter
+
+import matplotlib.pyplot as plt
+from Bio import SeqIO
 
 def make_histogram(y, row_title, col_title, title, output_folder, file_name):
     plt.figure()
@@ -24,14 +25,12 @@ def make_histogram(y, row_title, col_title, title, output_folder, file_name):
     x = [i for i in range(1, len(y) + 1)]
     plt.bar(x, y, width=1, align="center", color="b")
     plt.xticks(range(1, len(y) + 1), x)
-    plt.axis([0.5, len(x) + 0.5, 0, max(y)*1.1 ])
+    plt.axis([0.5, len(x) + 0.5, 0, max(y) * 1.1 ])
     plt.grid(True)
     
     save_path = os.path.join(output_folder, file_name)
     plt.savefig(save_path)
   
-def get_size(path):
-    return (os.stat(path)).st_size
 
 def size_human_readable(num):
     measure = ["B", "KB", "MB", "GB", "TB", "PB"]
@@ -43,79 +42,82 @@ def size_human_readable(num):
   
 def entropy(seq):
     nucleotid_occurances = Counter(seq)
-    seq_len=len(seq)
-    enth=0
+    seq_len = len(seq)
+    enth = 0
     for occurance in nucleotid_occurances.values():
-        freq = float(occurance)/seq_len
-        enth-= freq * math.log(freq)
+        freq = float(occurance) / seq_len
+        enth -= freq * math.log(freq, 2)
+        
     return enth
 
 def max_entropy(seq):
-    return math.log(len(seq))
+    return math.log(len(seq), 2)
 
-def create_output(sequences, entropies, total_count, complex_count ,input_file, output_folder):
-    make_histogram(entropies,
-                    "sequence",
-                    "entropy",
-                     "sequence entropy",
-                     output_folder,
-                     "Entropy per sequence"
-                     )
+def create_statistics_file(sequences, entropies, total_count, complex_count , input_file, output_folder):
     
-    output_handle = open(output_folder + "/filtered_" + input_file, "w")
-    SeqIO.write(sequences, output_handle, "fasta")
-    output_handle.close()
-    
-    size = size_human_readable(get_size(input_file))
-    creation_time=time.asctime()
+    size = size_human_readable((os.stat(input_file)).st_size)
+    creation_time = time.asctime()
     
     with open(output_folder + "/filter_statistics.txt", "w") as txt:
-        text_lines = ["File: "+input_file,
-                      "\n", 
-                      "Creation date: "+creation_time,
-                      "\n", 
-                      "Size: " + size, 
+        text_lines = ["File: " + input_file,
                       "\n",
-                      "Reads: " + str(total_count), 
+                      "Creation date: " + creation_time,
                       "\n",
-                      "Kept reads:"+str(complex_count), 
+                      "Size: " + size,
                       "\n",
-                      "Discarded reads:" + str(total_count-complex_count)
+                      "Reads: " + str(total_count),
+                      "\n",
+                      "Kept reads: " + str(complex_count),
+                      "\n",
+                      "Discarded reads: " + str(total_count - complex_count)
                       ]
         txt.writelines(text_lines)
 
-def main(argv):
+def main():
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_file", help="A FATSA file to be filtered for low complexity sequences")
+    parser.add_argument("input_file", help="A FASTA file to be filtered for low complexity sequences")
     parser.add_argument("output_folder", help="Folder where the output will be stored")
-    
-    if len(argv) != 2:
+        
+    try:
+        args = parser.parse_args()
+    except:
         parser.print_help()
         sys.exit(1)
-    args = parser.parse_args()
     
     if not os.path.exists(args.output_folder):
         os.makedirs(args.output_folder)
     
-    handle = open(args.input_file, "rU")
-    
     total_count = 0 
     complex_count = 0
     complex_records = []
-    entropies=[]
+    entropies = []
     
-    entropy_threshold=1.1
-    for record in SeqIO.parse(handle, "fasta"):
-        
-        total_count+=1
-        ent=entropy(record.seq)
-        entropies.append(ent)
-        if ent >= entropy_threshold:
-            complex_count += 1
-            complex_records.append(record)
+    entropy_threshold = 1.5
+    
+    with open(args.input_file, "rU") as handle:
+        for record in SeqIO.parse(handle, "fasta"):
             
-    create_output(complex_records, entropies, total_count, complex_count, args.input_file, args.output_folder)
+            total_count += 1
+            ent = entropy(record.seq)
+            entropies.append(ent)
+            if ent >= entropy_threshold:
+                complex_count += 1
+                complex_records.append(record)
+    
+    make_histogram(entropies,
+                    "sequence",
+                    "entropy",
+                     "sequence entropy",
+                     args.output_folder,
+                     "Entropy per sequence"
+                     )
+    
+    
+    with open(args.output_folder + "/filtered_" + args.input_file, "w") as output_handle:
+        SeqIO.write(complex_records, output_handle, "fasta")
+     
+    create_statistics_file(complex_records, entropies, total_count, complex_count, args.input_file, args.output_folder)
     
 if(__name__ == "__main__"):
-    main(sys.argv[1:])
+    main()
