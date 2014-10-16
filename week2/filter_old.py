@@ -15,14 +15,29 @@ from collections import Counter
 import matplotlib.pyplot as plt
 from Bio import SeqIO
 
-@profile
+
+def make_histogram(y, row_title, col_title, title, output_folder, file_name):
+    plt.figure()
+    plt.xlabel(row_title)
+    plt.ylabel(col_title)
+    plt.title(title)
+    """
+    changed plt.bar to plt.hist
+    """
+    plt.hist(y, color="b")
+    plt.grid(True)
+    
+    save_path = os.path.join(output_folder, file_name)
+    plt.savefig(save_path)
+"""
+##@profile
 def make_histogram(y, row_title, col_title, title, output_folder, file_name):
     plt.figure()
     
     plt.xlabel(row_title)
     plt.ylabel(col_title)
     plt.title(title)
-  
+    
     x = [i for i in range(1, len(y) + 1)]
     plt.bar(x, y, width=1, align="center", color="b")
     plt.xticks(range(1, len(y) + 1), x)
@@ -31,9 +46,8 @@ def make_histogram(y, row_title, col_title, title, output_folder, file_name):
     
     save_path = os.path.join(output_folder, file_name)
     plt.savefig(save_path)
-  
+  """
 
-@profile
 def size_human_readable(num):
     measure = ["B", "KB", "MB", "GB", "TB", "PB"]
     index = 0
@@ -42,7 +56,6 @@ def size_human_readable(num):
         index += 1
     return str(round(num, 2)) + measure[index]
   
-@profile
 def entropy(seq):
     nucleotid_occurances = Counter(seq)
     seq_len = len(seq)
@@ -53,11 +66,9 @@ def entropy(seq):
         
     return enth
 
-@profile
 def max_entropy(seq):
     return math.log(len(seq), 2)
 
-@profile
 def create_statistics_file(sequences, entropies, total_count, complex_count , input_file, output_folder):
     
     size = size_human_readable((os.stat(input_file)).st_size)
@@ -78,11 +89,10 @@ def create_statistics_file(sequences, entropies, total_count, complex_count , in
                       ]
         txt.writelines(text_lines)
 
-@profile
 def main():
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_file", help="A FASTA file to be filtered for low complexity sequences")
+    parser.add_argument("input_file", help="A FASTA or FASTQ file to be filtered for low complexity sequences")
     parser.add_argument("output_folder", help="Folder where the output will be stored")
         
     try:
@@ -94,6 +104,13 @@ def main():
     if not os.path.exists(args.output_folder):
         os.makedirs(args.output_folder)
     
+    if(args.input_file.endswith(".fasta")):
+        file_type = "fasta"
+    elif(args.input_file.endswith(".fastq")):
+        file_type = "fastq"
+    else:
+        parser.error("File format is not supported")
+    
     total_count = 0 
     complex_count = 0
     complex_records = []
@@ -102,8 +119,7 @@ def main():
     entropy_threshold = 1.5
     
     with open(args.input_file, "rU") as handle:
-        for record in SeqIO.parse(handle, "fasta"):
-            
+        for record in SeqIO.parse(handle, file_type):
             total_count += 1
             ent = entropy(record.seq)
             entropies.append(ent)
@@ -112,8 +128,8 @@ def main():
                 complex_records.append(record)
     
     make_histogram(entropies,
+                   "entropy",
                     "sequence",
-                    "entropy",
                      "sequence entropy",
                      args.output_folder,
                      "Entropy per sequence"
@@ -121,7 +137,7 @@ def main():
     
     
     with open(args.output_folder + "/filtered_" + args.input_file, "w") as output_handle:
-        SeqIO.write(complex_records, output_handle, "fasta")
+        SeqIO.write(complex_records, output_handle, file_type)
      
     create_statistics_file(complex_records, entropies, total_count, complex_count, args.input_file, args.output_folder)
     
