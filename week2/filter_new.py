@@ -10,36 +10,31 @@ import os
 import argparse
 import math
 import time
-from collections import Counter
 from contextlib import nested
 
 import matplotlib.pyplot as plt
 from Bio import SeqIO
-import numpy as np
 from scipy import weave
 
 BUFFER_SIZE = 100
 
-@profile
 def make_histogram(y, row_title, col_title, title, output_folder, file_name):
-    #plt.figure()
+    """
+    removed plt.figure()
+    """
     plt.xlabel(row_title)
     plt.ylabel(col_title)
     plt.title(title)
     """
     changed plt.bar to plt.hist
     """
-    # x = [i for i in range(1, len(y) + 1)]
     plt.hist(y, color="b")
-    # plt.xticks(range(1, len(y) + 1), x)
-    # plt.axis([0.5, len(x) + 0.5, 0, max(y) * 1.1 ])
     plt.grid(True)
     
     save_path = os.path.join(output_folder, file_name)
     plt.savefig(save_path)
   
 
-# @profile
 def size_human_readable(num):
     measure = ["B", "KB", "MB", "GB", "TB", "PB"]
     index = 0
@@ -48,7 +43,6 @@ def size_human_readable(num):
         index += 1
     return str(round(num, 2)) + measure[index]
   
-# @profile
 def entropy(seq):
     """
     whole function rewriten in C
@@ -75,7 +69,6 @@ def entropy(seq):
     return  weave.inline(code, ['seq'])
     
 
-# @profile
 def max_entropy(seq):
     return math.log(len(seq), 2)
 
@@ -100,11 +93,10 @@ def create_statistics_file(total_count, complex_count , input_file, output_folde
                       ]
         txt.writelines(text_lines)
 
-@profile
 def main():
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_file", help="A FASTA file to be filtered for low complexity sequences")
+    parser.add_argument("input_file", help="A FASTA or FASTQ file to be filtered for low complexity sequences")
     parser.add_argument("output_folder", help="Folder where the output will be stored")
         
     try:
@@ -130,7 +122,9 @@ def main():
     entropies = []
      
     entropy_threshold = 1.5
-    
+    """
+    combined fout and fin in same loop
+    """
     with nested(open(args.input_file, "rU"), open(args.output_folder + "/filtered_" + args.input_file, "w")) as (fin, fout):
         buffer_size = BUFFER_SIZE
         buffered_records = []
