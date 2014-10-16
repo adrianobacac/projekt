@@ -20,18 +20,19 @@ from scipy import weave
 
 BUFFER_SIZE = 100
 
-# @profile
+@profile
 def make_histogram(y, row_title, col_title, title, output_folder, file_name):
-    plt.figure()
-    
+    #plt.figure()
     plt.xlabel(row_title)
     plt.ylabel(col_title)
     plt.title(title)
-  
-    x = [i for i in range(1, len(y) + 1)]
-    plt.bar(x, y, width=1, align="center", color="b")
-    plt.xticks(range(1, len(y) + 1), x)
-    plt.axis([0.5, len(x) + 0.5, 0, max(y) * 1.1 ])
+    """
+    changed plt.bar to plt.hist
+    """
+    # x = [i for i in range(1, len(y) + 1)]
+    plt.hist(y, color="b")
+    # plt.xticks(range(1, len(y) + 1), x)
+    # plt.axis([0.5, len(x) + 0.5, 0, max(y) * 1.1 ])
     plt.grid(True)
     
     save_path = os.path.join(output_folder, file_name)
@@ -135,10 +136,12 @@ def main():
         buffered_records = []
         for record in SeqIO.parse(fin, file_type):
             if buffer_size > 0:
-                buffer_size-=1
+                buffer_size -= 1
                 total_count += 1
                 ent = entropy(str(record.seq))
+                
                 entropies.append(ent)
+                
                 if ent >= entropy_threshold:
                     complex_count += 1
                     buffered_records.append(record)
@@ -148,8 +151,8 @@ def main():
                 buffer_size = BUFFER_SIZE
     
     make_histogram(entropies,
+                   "entropy",
                     "sequence",
-                    "entropy",
                      "sequence entropy",
                      args.output_folder,
                      "Entropy per sequence"
